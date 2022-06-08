@@ -1,4 +1,3 @@
-const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageActionRow, Modal, TextInputComponent, MessageSelectMenu } = require('discord.js');
 
 module.exports = {

@@ -1,7 +1,8 @@
-const { MessageActionRow, MessageButton, Modal, TextInputComponent, MessageSelectMenu } = require('discord.js');
+const { MessageActionRow, Modal, MessageSelectMenu } = require('discord.js');
 
 module.exports = {
 	name: 'warrior',
+	button: 'Warrior',
 	async execute(interaction) {
 		const charModal = new Modal()
 			.setCustomId('charInput2')
