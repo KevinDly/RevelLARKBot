@@ -1,10 +1,11 @@
 const { MessageActionRow, Modal, TextInputComponent, MessageSelectMenu } = require('discord.js');
 
+// TODO: Reimplement once Discord supports select menus in modals
 module.exports = {
-	name: 'infoEntry',
+	name: 'infoEntry2',
 	async execute(interaction) {
 		const charModal = new Modal()
-			.setCustomId('infoEntry')
+			.setCustomId('infoEntry2')
 			.setTitle('Basic Character Information');
 
 		const nameInput = new TextInputComponent()
@@ -12,7 +13,7 @@ module.exports = {
 			.setLabel('Enter your character\'s name')
 			.setStyle('SHORT');
 
-		/* const statusSelect = new MessageSelectMenu()
+		const statusSelect = new MessageSelectMenu()
 			.setCustomId('charStatus')
 			.setPlaceholder('Nothing selected')
 			.addOptions([
@@ -26,12 +27,12 @@ module.exports = {
 					description: 'The character you are entering is an ALT',
 					value:'alt',
 				},
-			]);*/
+			]);
 
 		const nameInputRow = new MessageActionRow().addComponents(nameInput);
-		// const secondActionRow = new MessageActionRow().addComponents(statusSelect);
+		const secondActionRow = new MessageActionRow().addComponents(statusSelect);
 
-		charModal.addComponents(nameInputRow);
+		charModal.addComponents(nameInputRow, secondActionRow);
 		await interaction.showModal(charModal);
 
 		return;
