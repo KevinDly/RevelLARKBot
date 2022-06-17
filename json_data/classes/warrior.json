@@ -1,0 +1,26 @@
+{
+	"name": "warrior",
+	"button": "Warrior",
+	"classes":[
+		{
+			"label": "Paladin",
+			"description": "Paladin!",
+			"value":"paladin"
+		},
+		{
+			"label": "Berserker",
+			"description": "Berserker!",
+			"value":"berserker"
+		},
+		{
+			"label": "Destroyer",
+			"description": "Destroyer!",
+			"value":"destroyer"
+		},
+		{
+			"label": "Gunlancer",
+			"description": "Gunlancer!",
+			"value":"gunlancer"
+		}
+	]
+}

@@ -1,0 +1,16 @@
+{
+	"name": "assassin",
+	"button": "Assassin",
+	"classes": [
+		{
+			"label": "Shadowhunter",
+			"description": "Shadowhunter!",
+			"value":"shadowhunter"
+		},
+		{
+			"label": "Deathblade",
+			"description": "Deathblade!",
+			"value":"deathblade"
+		}
+	]
+}

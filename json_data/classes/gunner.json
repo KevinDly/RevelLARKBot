@@ -1,0 +1,26 @@
+{
+	"name": "gunner",
+	"button": "Gunner",
+	"classes": [
+		{
+			"label": "Gunslinger",
+			"description": "Gunslinger!",
+			"value":"gunslinger"
+		},
+		{
+			"label": "Artillerist",
+			"description": "Artillerist!",
+			"value":"artillerist"
+		},
+		{
+			"label": "Deadeye",
+			"description": "Deadeye!",
+			"value":"deadeye"
+		},
+		{
+			"label": "Sharpshooter",
+			"description": "Sharpshooter!",
+			"value":"sharpshooter"
+		}
+	]
+}

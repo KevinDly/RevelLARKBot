@@ -7,10 +7,10 @@ const { MongoClient } = require('mongodb');
 const { token, uri } = require('./config.json');
 const fs = require('node:fs');
 const path = require('node:path');
-const wait = require('node:timers/promises').setTimeout;
 
 const { MessageActionRow, MessageButton, MessageSelectMenu } = require('discord.js');
 const { waitForDebugger } = require('node:inspector');
+const { isContextMenuApplicationCommandInteraction } = require('discord-api-types/utils/v10');
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
@@ -34,10 +34,16 @@ for (const file of commandfs) {
 }
 
 client.modals = new Collection();
-
+client.jsondata = new Collection();
+// Convert bottom into function
 const modalsPath = path.join(__dirname, 'modals');
 const modalfs = fs.readdirSync(modalsPath).filter(file => file.endsWith('.js'));
 const modalfolders = fs.readdirSync(modalsPath, { withFileTypes: true }).filter(dirent => dirent.isDirectory())
+	.map(folder => folder.name);
+
+const jsonPath = path.join(__dirname, 'json_data');
+const jsonfs = fs.readdirSync(jsonPath).filter(file => file.endsWith('.js'));
+const jsonfolders = fs.readdirSync(jsonPath, { withFileTypes: true }).filter(dirent => dirent.isDirectory())
 	.map(folder => folder.name);
 
 for (const file of modalfs) {
@@ -46,20 +52,34 @@ for (const file of modalfs) {
 	client.modals.set(modal.name, modal);
 }
 
+// Modal Folder
 for (const fileName of modalfolders) {
 	const folderPath = path.join(modalsPath, fileName);
 	const subModals = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
-	// console.log(subModals);
 	const collection = new Collection();
 	client.modals.set(fileName, collection);
 	for (const subFile of subModals) {
-		// console.log(subFile);
 		const filePath = path.join(folderPath, subFile);
-		// console.log(filePath);
 		const modal = require(filePath);
 		client.modals.get(fileName).set(modal.name, modal);
 	}
-	// console.log(client.modals.get(fileName));
+}
+
+// Json Folder
+for (const fileName of jsonfolders) {
+	const folderPath = path.join(jsonPath, fileName);
+	const subJsons = fs.readdirSync(folderPath).filter(file => file.endsWith('.json'));
+	const collection = new Collection();
+	client.jsondata.set(fileName, collection);
+	for (const subFile of subJsons) {
+		// console.log(subFile);
+		// console.log(folderPath);
+		const filePath = path.join(folderPath, subFile);
+		// console.log(filePath);
+		const data = require(filePath);
+		// console.log(data);
+		client.jsondata.get(fileName).set(data.name, data);
+	}
 }
 
 // Begin Client Information
@@ -101,23 +121,39 @@ client.on('interactionCreate', async interaction => {
 		// IDs will be delimitted by a .
 		const idArray = interaction.customId.split('.');
 		console.log(idArray);
-		let button = client.modals.get(idArray[0]);
 
-		client.modals.get(button);
+		if (idArray[0] == 'classEntry') {
+			const classData = client.jsondata.get('classes').get(idArray[1]);
+			console.log('class data');
+			console.log(classData);
+			const selection = new MessageActionRow()
+				.addComponents([ new MessageSelectMenu()
+					.setCustomId('classSelector')
+					.setPlaceholder('Pick an Advanced Class!')
+					.addOptions(
+						classData.classes,
+					),
+				]);
+			await interaction.update({ content: 'Pick your class!', components: [selection] });
+		}
+		else {
+			console.log(idArray[0]);
+			const button = client.modals.get(idArray[0]);
+
+			/* client.modals.get(button);
 		if (idArray.length > 1) {
 			button = button.get(idArray[1]);
-		}
+		}*/
 
-		console.log(button);
-		// console.log(client.modals);
-		// console.log(button);
+			console.log(button);
 
-		try {
-			await button.execute(interaction);
-		}
-		catch (error) {
-			console.error(error);
-			await interaction.reply({ content: 'There was an error executing this command', ephemeral: true });
+			try {
+				await button.execute(interaction);
+			}
+			catch (error) {
+				console.error(error);
+				await interaction.reply({ content: 'There was an error executing this command', ephemeral: true });
+			}
 		}
 	}
 	else if (interaction.isModalSubmit()) {
@@ -125,20 +161,6 @@ client.on('interactionCreate', async interaction => {
 		// TODO: HANDLE FOR GREATER THAN 5 BUTTONS!
 		if (interaction.customId == 'infoEntry') {
 			const charName = interaction.fields.getTextInputValue('charName');
-			// const charStatus = interaction.fields.getField('charStatus').value;
-
-			// const classes = client.modals.get('classes');
-			// console.log(interaction.fields);
-			// console.log(charName + ' is a ' + charStatus);
-
-			/* const buttonRow = new MessageActionRow();
-			for (const gameClass of classes.keys()) {
-				console.log(gameClass);
-				buttonRow.addComponents(new MessageButton()
-					.setCustomId('classes.' + gameClass)
-					.setLabel(classes.get(gameClass).button)
-					.setStyle('PRIMARY'));
-			} */
 
 			const charStatus = new MessageActionRow()
 				.addComponents(
@@ -166,38 +188,14 @@ client.on('interactionCreate', async interaction => {
 			});
 
 			executeSelect(interaction, charStatus, message);
-			// const collector = interaction.message.createMessageComponentCollector({ componentType: 'SELECT_MENU', time: 15000, max: 1 });
-
-			/* const filter = i => {
-				i.deferUpdate();
-				return i.user.id === interaction.user.id;
-			};
-			// console.log(buttonRow);
-			const msgResult = await interaction.update({ content: message, components: [charStatus] });
-
-			console.log(msgResult);
-			msgResult.awaitMessageComponent({ filter, componentType: 'SELECT_MENU', time: 60000 })
-				.then(interact => {
-					client.userData.get(interaction.user.id)['charStatus'] = interact.values[0];
-					console.log(client.userData.get(interaction.user.id));
-					interact.update('Nice');
-				})
-				.catch(err => console.log('No interactions...'));*/
-
-
 		}
 		else {
 			await interaction.update({ content: 'You\'re done! Enjoy your time in Revel.', components: [] });
 		}
 	}
-	else if (interaction.isSelectMenu) {
-		// console.log(client.userData.get(interaction.user.id));
-	}
-	// if(interaction.commandName == '')
 });
 
 client.login(token);
-
 
 async function initDB() {
 	try {
@@ -212,43 +210,43 @@ async function initDB() {
 async function executeSelect(interaction, charStatus, message) {
 	try {
 		const filter = i => {
-			i.deferUpdate();
+			// i.deferUpdate();
 			return i.user.id === interaction.user.id;
 		};
 		// console.log(buttonRow);
 		const msgResult = await interaction.update({ content: message, components: [charStatus], fetchReply: true });
 
-		const collector = msgResult.createMessageComponentCollector({ componentType: 'SELECT_MENU', time: 15000, max: 1 });
+		const collector = msgResult.createMessageComponentCollector({ filter, componentType: 'SELECT_MENU', time: 15000, max: 1 });
 
 		collector.on('collect', async interact => {
-			await interact.update({ content: 'Great!', components: [] });
+			const componentButtons = [];
+			console.log(client.jsondata);
+			for (const classFile of client.jsondata.get('classes')) {
+				const gameClass = classFile[1];
+				componentButtons.push(
+					new MessageButton()
+						.setCustomId('classEntry.' + gameClass.name)
+						.setLabel(gameClass.button)
+						.setStyle('PRIMARY'));
+			}
+			console.log('done!');
+			console.log(componentButtons);
+			const classActionRow = new MessageActionRow().addComponents(componentButtons);
+
+			// await interact.deferUpdate();
+			await interact.update({ content: 'Great!', components: [classActionRow] });
 		});
 
 		collector.on('end', async (interact) => {
-			// interact.get(interact.keys().next().value)
-			// console.log(interact);
+
 			const finalInteraction = interact.get(interact.firstKey());
-			// console.log('ended');
-			// console.log(interact.get(interact.firstKey()).values[0]);
+
 			client.userData.get(interaction.user.id)['charStatus'] = finalInteraction.values[0];
 
 			console.log('data');
 			console.log(client.userData.get(interaction.user.id));
-			/* await interact.deferUpdate();
-			await interact.wait(1000);
-			await interact.update('Nice'); */
-		});
-		/* console.log(msgResult);
-		msgResult.awaitMessageComponent({ filter, componentType: 'SELECT_MENU', time: 60000 })
-			.then(async interact => {
-				client.userData.get(interaction.user.id)['charStatus'] = interact.values[0];
-				console.log(client.userData.get(interaction.user.id));
 
-				await interact.deferUpdate(1000);
-				await wait(1000);
-				await interact.update('Nice');
-			})
-			.catch(err => console.log(err)); */
+		});
 	}
 	catch (error) {
 		console.log(error);

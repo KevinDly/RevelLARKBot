@@ -1,0 +1,21 @@
+{
+	"name": "mage",
+	"button": "Mage",
+	"classes": [
+		{
+			"label": "Sorceress",
+			"description": "Sorceress!",
+			"value":"sorceress"
+		},
+		{
+			"label": "Bard",
+			"description": "Bard!",
+			"value":"bard"
+		},
+		{
+			"label": "Arcanist",
+			"description": "Arcana!",
+			"value":"arcanist"
+		}
+	]
+}
