@@ -134,7 +134,9 @@ client.on('interactionCreate', async interaction => {
 						classData.classes,
 					),
 				]);
-			await interaction.update({ content: 'Pick your class!', components: [selection] });
+
+			executeAdvSelect(interaction, selection, 'Pick your class!');
+			// await interaction.update({ content: 'Pick your class!', components: [selection] });
 		}
 		else {
 			console.log(idArray[0]);
@@ -187,7 +189,7 @@ client.on('interactionCreate', async interaction => {
 				name: charName,
 			});
 
-			executeSelect(interaction, charStatus, message);
+			executeClassSelect(interaction, charStatus, message);
 		}
 		else {
 			await interaction.update({ content: 'You\'re done! Enjoy your time in Revel.', components: [] });
@@ -207,7 +209,36 @@ async function initDB() {
 	}
 }
 
-async function executeSelect(interaction, charStatus, message) {
+async function executeAdvSelect(interaction, charStatus, message) {
+	try {
+		const filter = i => {
+			// i.deferUpdate();
+			return i.user.id === interaction.user.id;
+		};
+
+		const msgResult = await interaction.update({ content: message, components: [charStatus], fetchReply: true });
+
+		const collector = msgResult.createMessageComponentCollector({ filter, componentType: 'SELECT_MENU', time: 15000, max: 1 });
+
+		collector.on('collect', async interact => {
+			console.log('Collected adv class');
+			await interact.update({ content: 'You\'re all done, welcome!', components: [] });
+		});
+
+		collector.on('end', async interact => {
+			console.log('Ended data collection');
+			const finalInteraction = interact.get(interact.firstKey());
+
+			client.userData.get(interaction.user.id)['class'] = finalInteraction.values[0];
+			console.log(client.userData.get(interaction.user.id));
+		});
+	}
+	catch (err) {
+		console.log(err);
+	}
+}
+
+async function executeClassSelect(interaction, charStatus, message) {
 	try {
 		const filter = i => {
 			// i.deferUpdate();
@@ -239,6 +270,7 @@ async function executeSelect(interaction, charStatus, message) {
 
 		collector.on('end', async (interact) => {
 
+			// TODO: test for bug here, try multiple uses of command to see what the issue is
 			const finalInteraction = interact.get(interact.firstKey());
 
 			client.userData.get(interaction.user.id)['charStatus'] = finalInteraction.values[0];
