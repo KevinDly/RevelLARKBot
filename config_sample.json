@@ -2,5 +2,7 @@
 	"clientId": "placeholder",
 	"guildId": "placeholder",
 	"token": "placeholder",
-	"uri": "placeholder"
+	"uri": "placeholder",
+	"db_name": "placeholder",
+	"db_user": "placeholder"
 }

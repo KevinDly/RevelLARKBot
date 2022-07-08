@@ -4,7 +4,7 @@
 // TODO: Move the different interactions to different files.
 const { Client, Intents, Collection } = require('discord.js');
 const { MongoClient } = require('mongodb');
-const { token, uri } = require('./config.json');
+const { token, uri, db_name, db_user } = require('./config.json');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -42,7 +42,6 @@ const modalfolders = fs.readdirSync(modalsPath, { withFileTypes: true }).filter(
 	.map(folder => folder.name);
 
 const jsonPath = path.join(__dirname, 'json_data');
-const jsonfs = fs.readdirSync(jsonPath).filter(file => file.endsWith('.js'));
 const jsonfolders = fs.readdirSync(jsonPath, { withFileTypes: true }).filter(dirent => dirent.isDirectory())
 	.map(folder => folder.name);
 
@@ -72,12 +71,8 @@ for (const fileName of jsonfolders) {
 	const collection = new Collection();
 	client.jsondata.set(fileName, collection);
 	for (const subFile of subJsons) {
-		// console.log(subFile);
-		// console.log(folderPath);
 		const filePath = path.join(folderPath, subFile);
-		// console.log(filePath);
 		const data = require(filePath);
-		// console.log(data);
 		client.jsondata.get(fileName).set(data.name, data);
 	}
 }
@@ -128,7 +123,7 @@ client.on('interactionCreate', async interaction => {
 			console.log(classData);
 			const selection = new MessageActionRow()
 				.addComponents([ new MessageSelectMenu()
-					.setCustomId('classSelector')
+					.setCustomId(`classSelector.${idArray[2]}.${idArray[3]}`)
 					.setPlaceholder('Pick an Advanced Class!')
 					.addOptions(
 						classData.classes,
@@ -167,7 +162,7 @@ client.on('interactionCreate', async interaction => {
 			const charStatus = new MessageActionRow()
 				.addComponents(
 					new MessageSelectMenu()
-						.setCustomId('charStatus')
+						.setCustomId('charStatus.' + charName)
 						.setPlaceholder('Nothing selected')
 						.addOptions([
 							{
@@ -185,9 +180,9 @@ client.on('interactionCreate', async interaction => {
 			const message = 'Hello, ' + charName + ', please choose if you are a main or an alt!';
 			console.log(message);
 
-			client.userData.set(interaction.user.id, {
+			/* client.userData.set(interaction.user.id, {
 				name: charName,
-			});
+			}); */
 
 			executeClassSelect(interaction, charStatus, message);
 		}
@@ -206,16 +201,20 @@ async function initDB() {
 	}
 	catch (error) {
 		console.log(error);
+		initDB();
 	}
 }
 
+// Final function of character entry
+// TODO: Move to own file
 async function executeAdvSelect(interaction, charStatus, message) {
 	try {
 		const filter = i => {
-			// i.deferUpdate();
+
 			return i.user.id === interaction.user.id;
 		};
 
+		const idArray = interaction.customId.split('.');
 		const msgResult = await interaction.update({ content: message, components: [charStatus], fetchReply: true });
 
 		const collector = msgResult.createMessageComponentCollector({ filter, componentType: 'SELECT_MENU', time: 15000, max: 1 });
@@ -229,8 +228,59 @@ async function executeAdvSelect(interaction, charStatus, message) {
 			console.log('Ended data collection');
 			const finalInteraction = interact.get(interact.firstKey());
 
-			client.userData.get(interaction.user.id)['class'] = finalInteraction.values[0];
-			console.log(client.userData.get(interaction.user.id));
+			console.log(idArray);
+			const dbo = database.db(db_name);
+			const userId = `${interaction.user.id}`;
+			const idObj = { '_id': userId };
+			const userObj = {
+				name: idArray[2],
+				status: idArray[3],
+				class: finalInteraction.values[0],
+			};
+
+			// If the id is not in the local database
+			if (!(userId in client.userData)) {
+				client.userData[userId] = {};
+			}
+
+			if (!('classes' in client.userData[userId])) {
+				// If the key classes does not exist for the id in the local database
+				const classArray = [];
+				classArray.push(userObj);
+				client.userData[userId]['classes'] = classArray;
+			}
+			else {
+				// If it does
+				client.userData[userId]['classes'].push(userObj);
+			}
+
+			console.log('data');
+			console.log(client.userData[userId]);
+			dbo.collection(db_user).findOne(idObj, function(err, res) {
+				if (err) throw err;
+
+				if (!res) {
+					// If the ID does not have the key 'classes' in the cloud database
+					idObj['classes'] = [userObj];
+					dbo.collection(db_user).insertOne(idObj, function(err, res) {
+						console.log('Inserted');
+					});
+				}
+				else {
+					// If the ID has the key 'classes' in the cloud database
+					const classArr = res ? res['classes'] : [];
+					console.log(`ClassArr ${classArr}`);
+					classArr.push(userObj);
+					const newValues = { $set: { classes:classArr } };
+
+					dbo.collection(db_user).updateOne({ '_id': `${interaction.user.id}` }, newValues, function(err, res) {
+						if (err) throw err;
+						console.log('Updated');
+						console.log(res);
+					});
+				}
+			});
+
 		});
 	}
 	catch (err) {
@@ -238,6 +288,7 @@ async function executeAdvSelect(interaction, charStatus, message) {
 	}
 }
 
+// TODO: Move to own file
 async function executeClassSelect(interaction, charStatus, message) {
 	try {
 		const filter = i => {
@@ -249,14 +300,52 @@ async function executeClassSelect(interaction, charStatus, message) {
 
 		const collector = msgResult.createMessageComponentCollector({ filter, componentType: 'SELECT_MENU', time: 15000, max: 1 });
 
+		// const idArray = interaction.customId.split('.');
+
+		// console.log('Array');
+		// console.log(idArray);
 		collector.on('collect', async interact => {
 			const componentButtons = [];
 			console.log(client.jsondata);
+			// const finalInteraction = interact.get();
+
+			// console.log('Interaction');
+			// console.log(interact.values[0]);
+			console.log(`objectid: classEntry.${interaction.fields.getTextInputValue('charName')}.${interact.values[0]}`);
 			for (const classFile of client.jsondata.get('classes')) {
 				const gameClass = classFile[1];
 				componentButtons.push(
 					new MessageButton()
-						.setCustomId('classEntry.' + gameClass.name)
+						.setCustomId(`classEntry.${gameClass.name}.${interaction.fields.getTextInputValue('charName')}.${interact.values[0]}`)
+						.setLabel(gameClass.button)
+						.setStyle('PRIMARY'));
+			}
+			// console.log('done!');
+			// console.log(componentButtons);
+			const classActionRow = new MessageActionRow().addComponents(componentButtons);
+
+			await interact.update({ content: 'Great!', components: [classActionRow] });
+		});
+
+		/* collector.on('end', async (interact) => {
+
+			// TODO: test for bug here, try multiple uses of command to see what the issue is
+			/* const finalInteraction = interact.get(interact.firstKey());
+
+			client.userData.get(interaction.user.id)['charStatus'] = finalInteraction.values[0];
+
+			console.log('data');
+			console.log(client.userData.get(interaction.user.id)); */
+			/* const componentButtons = [];
+			console.log(client.jsondata);
+			const finalInteraction = interact.get(interact.firstKey());
+
+			console.log(`objectid: classEntry.${idArray[1]}.${finalInteraction.values[0]}`);
+			for (const classFile of client.jsondata.get('classes')) {
+				const gameClass = classFile[1];
+				componentButtons.push(
+					new MessageButton()
+						.setCustomId(`classEntry.${gameClass.name}.${interaction[1]}.${finalInteraction.values[0]}`)
 						.setLabel(gameClass.button)
 						.setStyle('PRIMARY'));
 			}
@@ -264,23 +353,33 @@ async function executeClassSelect(interaction, charStatus, message) {
 			console.log(componentButtons);
 			const classActionRow = new MessageActionRow().addComponents(componentButtons);
 
-			// await interact.deferUpdate();
-			await interact.update({ content: 'Great!', components: [classActionRow] });
-		});
-
-		collector.on('end', async (interact) => {
-
-			// TODO: test for bug here, try multiple uses of command to see what the issue is
-			const finalInteraction = interact.get(interact.firstKey());
-
-			client.userData.get(interaction.user.id)['charStatus'] = finalInteraction.values[0];
-
-			console.log('data');
-			console.log(client.userData.get(interaction.user.id));
-
-		});
+			await interact.update({ content: 'Great!', components: [classActionRow] }); 
+		}); */
 	}
 	catch (error) {
 		console.log(error);
 	}
+}
+
+// Converts an object id to a collection
+// ids: A list of additional ids
+// data: The data attached to the id
+function idToObject(id) {
+	const idArray = id.split('.');
+	const collectedId = {
+		ids: [],
+		data: {},
+	};
+
+	for (const word in idArray) {
+		if (word.includes(':')) {
+			const pair = word.split(':');
+			collectedId['data'][pair[0]] = pair[1];
+		}
+		else {
+			collectedId['ids'].push(word);
+		}
+	}
+
+	return collectedId;
 }
