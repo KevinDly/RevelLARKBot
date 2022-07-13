@@ -17,7 +17,7 @@ const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
 const database = new MongoClient(uri);
 
 // Load Database
-initDB();
+initDB().then(() => initData());
 
 // Load Command
 client.commands = new Collection();
@@ -205,6 +205,33 @@ async function initDB() {
 	}
 }
 
+async function initData() {
+	try {
+		// const datafromDB = [];
+		const dbo = database.db(db_name);
+		console.log('Writing data from cloud into local memory.');
+
+		dbo.collection(db_user).find({}).toArray(function(err, res) {
+			// console.log(res);
+			for (const doc of res) {
+				const userId = doc['_id'];
+				/* const document = {
+					classes: doc['classes'],
+				}; */
+				// console.log(doc);
+				// console.log(doc['classes']);
+				client.userData[userId] = {
+					classes: doc['classes'],
+				};
+			}
+		});
+		// console.log(`userData: ${client.userData}`);
+	}
+	catch (error) {
+		console.log(error);
+	}
+}
+
 // Final function of character entry
 // TODO: Move to own file
 async function executeAdvSelect(interaction, charStatus, message) {
@@ -326,35 +353,6 @@ async function executeClassSelect(interaction, charStatus, message) {
 
 			await interact.update({ content: 'Great!', components: [classActionRow] });
 		});
-
-		/* collector.on('end', async (interact) => {
-
-			// TODO: test for bug here, try multiple uses of command to see what the issue is
-			/* const finalInteraction = interact.get(interact.firstKey());
-
-			client.userData.get(interaction.user.id)['charStatus'] = finalInteraction.values[0];
-
-			console.log('data');
-			console.log(client.userData.get(interaction.user.id)); */
-			/* const componentButtons = [];
-			console.log(client.jsondata);
-			const finalInteraction = interact.get(interact.firstKey());
-
-			console.log(`objectid: classEntry.${idArray[1]}.${finalInteraction.values[0]}`);
-			for (const classFile of client.jsondata.get('classes')) {
-				const gameClass = classFile[1];
-				componentButtons.push(
-					new MessageButton()
-						.setCustomId(`classEntry.${gameClass.name}.${interaction[1]}.${finalInteraction.values[0]}`)
-						.setLabel(gameClass.button)
-						.setStyle('PRIMARY'));
-			}
-			console.log('done!');
-			console.log(componentButtons);
-			const classActionRow = new MessageActionRow().addComponents(componentButtons);
-
-			await interact.update({ content: 'Great!', components: [classActionRow] }); 
-		}); */
 	}
 	catch (error) {
 		console.log(error);
